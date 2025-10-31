@@ -177,7 +177,17 @@ export default function DocPlaceholderEditor() {
       setFileName(file.name);
       const originalArrayBuffer = await file.arrayBuffer();
 
-      const res = await uploadFile(file, openaiApiKey);
+      let res: UploadFileResponse;
+      try{
+        res = await uploadFile(file, openaiApiKey);
+      } catch (error) { 
+        toast.info("Looks like server is down due to free tier usage.", {
+          description: "This may take up to 1 minute on first upload. Please wait.",
+          duration: 60000, // 1 minute
+        });
+        await new Promise((resolve) => setTimeout(resolve, 60000)); // Wait 1 minute
+        res = await uploadFile(file, openaiApiKey);
+      }
       const { placeholders: phFromAPI, document_id } = res;
       setDocumentId(document_id);
 
