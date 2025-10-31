@@ -1,0 +1,36 @@
+{
+  "name": "filler",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
+    "@types/file-saver": "^2.0.7",
+    "docx-preview": "^0.3.7",
+    "docxtemplater": "^3.67.1",
+    "easy-template-x": "^7.0.2",
+    "file-saver": "^2.0.5",
+    "lodash": "^4.17.21",
+    "next": "16.0.1",
+    "pizzip": "^3.2.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.1",
+    "typescript": "^5"
+  }
+}
