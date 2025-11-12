@@ -34,7 +34,7 @@ def rename_placeholders(paras: List[str]) -> List[PlaceholderItem]:
         Rules (read carefully):
         1) Output MUST be valid JSON matching the provided JSON Schema (strict).
         2) Return one PlaceholderItem PER OCCURRENCE in true document order (1-based).
-        • Do NOT deduplicate. The list length MUST equal the number of bracketed matches.
+        The list length MUST equal the number of bracketed matches.
         3) If two occurrences refer to the SAME underlying value (same entity/field), RE-USE the same
         `name` (exact same Title Case string) for both.
         4) If two occurrences look similar but refer to DIFFERENT meanings, use DISTINCT names and make
