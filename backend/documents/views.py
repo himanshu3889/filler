@@ -6,11 +6,6 @@ from .models import Document, DocumentConversations
 from .agents import find_placeholder_paras, rename_placeholders, updatePlaceholders
 from docx import Document as DocxDocument
 
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 @api_view(['POST'])
 def file_upload(request):
@@ -25,13 +20,6 @@ def file_upload(request):
         )
     
     file = request.FILES['file']
-    openai_api_key = request.data.get("openai_api_key") or OPENAI_API_KEY
-    if not openai_api_key:
-        return Response(
-            {"error": "openai_api_key is required"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
         
     # Validate using the metadata
     if not file.content_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
@@ -51,7 +39,7 @@ def file_upload(request):
         # Use AI to rename and extract placeholders
         placeholders = []
         if len(placeholder_paras) > 0:
-            placeholders = rename_placeholders(placeholder_paras, openai_api_key)
+            placeholders = rename_placeholders(placeholder_paras)
         
 
         # Reset file pointer before saving to model
@@ -113,14 +101,6 @@ def agent_message(request):
         data = request.data
         document_id = data.get('id')
         message = data.get('message')
-        openai_api_key = data.get('openai_api_key') or OPENAI_API_KEY
-
-        if not openai_api_key:
-            return Response(
-                {"error": "openai_api_key is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         
         if not document_id:
             return Response(
@@ -164,9 +144,9 @@ def agent_message(request):
         conversation_history_for_ai = full_conversation_history[-15:] if len(full_conversation_history) > 15 else full_conversation_history
         
         # Use AI to process the message and update placeholders with conversation history
-        response_data = updatePlaceholders(message, ordered_placeholders, openai_api_key, conversation_history_for_ai)
-        
-        
+        response_data = updatePlaceholders(message, ordered_placeholders, conversation_history_for_ai)
+                
+                
         # Update placeholders with the AI response
         updates = response_data.get("updates", [])
         if updates:

@@ -80,8 +80,6 @@ function renameDocxByOccurrence(arrayBuffer: ArrayBuffer, orderedNewNames: strin
   return doc.getZip().generate({ type: "arraybuffer" }) as ArrayBuffer;
 }
 
-const API_KEY_STORAGE_KEY = "openai_api_key";
-
 export default function DocPlaceholderEditor() {
   const [placeholders, setPlaceholders] = useState<Record<string, Placeholder>>({});
   const [fileName, setFileName] = useState<string | null>(null);
@@ -94,29 +92,12 @@ export default function DocPlaceholderEditor() {
   // NEW: staged, per-field drafts
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
 
-  // API Key management
-  const [openaiApiKey, setOpenaiApiKey] = useState<string>("");
-  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState<boolean>(false);
-  const [apiKeyInput, setApiKeyInput] = useState<string>("");
-
   // Responsive
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
   const drawerWidth = isMdDown ? "100%" : 420;
   const appBarHeight = isSmDown ? 56 : 64;
-
-  // Load API key from localStorage on mount
-  useEffect(() => {
-    const storedKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (storedKey) {
-      setOpenaiApiKey(storedKey);
-      setApiKeyInput(storedKey);
-    } else {
-      // Show dialog if no API key exists
-      setApiKeyDialogOpen(true);
-    }
-  }, []);
 
   useEffect(() => {
     const setVh = () =>
@@ -126,36 +107,6 @@ export default function DocPlaceholderEditor() {
     return () => window.removeEventListener("resize", setVh);
   }, []);
 
-  // Handle API key dialog
-  const handleApiKeySave = () => {
-    const trimmedKey = apiKeyInput.trim();
-    if (!trimmedKey) {
-      toast.error("Invalid API key", {
-        description: "Please enter a valid OpenAI API key",
-      });
-      return; // Don't save empty keys
-    }
-    setOpenaiApiKey(trimmedKey);
-    localStorage.setItem(API_KEY_STORAGE_KEY, trimmedKey);
-    setApiKeyDialogOpen(false);
-    toast.success("API key saved", {
-      description: "Your OpenAI API key has been saved locally",
-    });
-  };
-
-  const handleApiKeyDialogOpen = () => {
-    setApiKeyInput(openaiApiKey);
-    setApiKeyDialogOpen(true);
-  };
-
-  const handleApiKeyDialogClose = () => {
-    // Only allow closing if API key already exists
-    if (openaiApiKey) {
-      setApiKeyDialogOpen(false);
-      setApiKeyInput(openaiApiKey);
-    }
-  };
-
   // UI state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<0 | 1>(0);
@@ -164,13 +115,6 @@ export default function DocPlaceholderEditor() {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files?.length) return;
     
-    // Check if API key is set
-    if (!openaiApiKey) {
-      setApiKeyDialogOpen(true);
-      if (event.target) event.target.value = "";
-      return;
-    }
-
     setIsUploading(true);
     try {
       const file = event.target.files[0];
@@ -179,14 +123,14 @@ export default function DocPlaceholderEditor() {
 
       let res: UploadFileResponse;
       try{
-        res = await uploadFile(file, openaiApiKey);
+        res = await uploadFile(file);
       } catch (error) { 
         toast.info("Looks like server is down due to free tier usage.", {
           description: "This may take up to 1 minute on first upload. Please wait.",
           duration: 60000, // 1 minute
         });
         await new Promise((resolve) => setTimeout(resolve, 60000)); // Wait 1 minute
-        res = await uploadFile(file, openaiApiKey);
+        res = await uploadFile(file);
       }
       const { placeholders: phFromAPI, document_id } = res;
       setDocumentId(document_id);
@@ -421,14 +365,9 @@ export default function DocPlaceholderEditor() {
           {/* Actions: icons on phones, buttons on larger screens */}
           {isSmDown ? (
             <>
-              <Tooltip title="OpenAI API Settings">
-                <IconButton onClick={handleApiKeyDialogOpen} size="large">
-                  <SettingsIcon />
-                </IconButton>
-              </Tooltip>
               <Tooltip title="Upload .docx">
                 <span>
-                  <IconButton component="label" disabled={isUploading || !openaiApiKey} size="large">
+                  <IconButton component="label" disabled={isUploading} size="large">
                     <UploadFileIcon />
                     <input hidden type="file" accept=".docx" onChange={handleFileUpload} />
                   </IconButton>
@@ -464,22 +403,12 @@ export default function DocPlaceholderEditor() {
             </>
           ) : (
             <>
-              <Tooltip title="OpenAI API Settings">
-                <Button
-                  variant="outlined"
-                  startIcon={<SettingsIcon />}
-                  onClick={handleApiKeyDialogOpen}
-                  sx={{ mr: 1 }}
-                >
-                  API Key
-                </Button>
-              </Tooltip>
               <Tooltip title="Upload .docx">
                 <Button
                   variant="outlined"
                   startIcon={<UploadFileIcon />}
                   component="label"
-                  disabled={isUploading || !openaiApiKey}
+                  disabled={isUploading}
                   sx={{ mr: 1 }}
                 >
                   Upload
@@ -557,7 +486,7 @@ export default function DocPlaceholderEditor() {
                 variant="contained"
                 startIcon={<UploadFileIcon />}
                 component="label"
-                disabled={isUploading || !openaiApiKey}
+                disabled={isUploading}
               >
                 Choose .docx
                 <input hidden type="file" accept=".docx" onChange={handleFileUpload} />
@@ -730,7 +659,6 @@ export default function DocPlaceholderEditor() {
               <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
                 <Chat
                   documentId={documentId}
-                  openaiApiKey={openaiApiKey}
                   onChatResponse={(response: AgentMessageResponse) => {
                     applyStructuredUpdates(response.updates); // commit
                     // also reflect in drafts
@@ -753,57 +681,6 @@ export default function DocPlaceholderEditor() {
           )}
         </Box>
       </Drawer>
-
-      {/* API Key Dialog */}
-      <Dialog
-        open={apiKeyDialogOpen}
-        onClose={handleApiKeyDialogClose}
-        aria-labelledby="api-key-dialog-title"
-        maxWidth="sm"
-        fullWidth
-        disableEscapeKeyDown={!openaiApiKey}
-      >
-        <DialogTitle id="api-key-dialog-title">
-          {openaiApiKey ? "Edit OpenAI API Key" : "OpenAI API Key Required"}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {openaiApiKey
-              ? "Update your OpenAI API key. This key is stored locally in your browser and used for document processing and AI chat."
-              : "Please enter your OpenAI API key to continue. This key will be stored locally in your browser and is required for uploading documents and using AI features."}
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            id="api-key"
-            label="OpenAI API Key"
-            type="password"
-            fullWidth
-            variant="outlined"
-            value={apiKeyInput}
-            onChange={(e) => setApiKeyInput(e.target.value)}
-            placeholder="sk-..."
-            sx={{ mt: 2 }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && apiKeyInput.trim()) {
-                handleApiKeySave();
-              }
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          {openaiApiKey && (
-            <Button onClick={handleApiKeyDialogClose}>Cancel</Button>
-          )}
-          <Button
-            onClick={handleApiKeySave}
-            variant="contained"
-            disabled={!apiKeyInput.trim()}
-          >
-            {openaiApiKey ? "Update" : "Save & Continue"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

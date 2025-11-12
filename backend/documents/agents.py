@@ -7,6 +7,11 @@ from pydantic import BaseModel, Field, ConfigDict, ValidationError, conint, cons
 from openai import OpenAI
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+OPENAI_CLIENT = OpenAI(base_url=os.getenv("OPENAI_BASE_URL"),api_key=os.getenv("OPENAI_API_KEY_1"))
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 # ---- Pydantic models ----
 class PlaceholderItem(BaseModel):
@@ -21,9 +26,7 @@ class RenamePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
     placeholders: List[PlaceholderItem]
 
-def rename_placeholders(paras: List[str], openai_api_key:str) -> List[PlaceholderItem]:
-    client = OpenAI(api_key=openai_api_key)
-    MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+def rename_placeholders(paras: List[str]) -> List[PlaceholderItem]:
 
     prompt = """You extract bracketed placeholders from legal/financial documents and assign
         human-understandable names.
@@ -47,8 +50,8 @@ def rename_placeholders(paras: List[str], openai_api_key:str) -> List[Placeholde
     schema = RenamePayload.model_json_schema()
     user_content = "\n".join(paras)
 
-    resp = client.chat.completions.create(
-        model=MODEL,
+    resp = OPENAI_CLIENT.chat.completions.create(
+        model=OPENAI_MODEL,
         temperature=0,
         messages=[{"role": "system", "content": prompt}, {"role": "user", "content": user_content}],
         response_format={
@@ -59,6 +62,7 @@ def rename_placeholders(paras: List[str], openai_api_key:str) -> List[Placeholde
 
     content = resp.choices[0].message.content or "{}"
     try:
+        print(content)
         payload = RenamePayload.model_validate_json(content)
     except ValidationError as ve:
         raise RuntimeError(f"Pydantic validation failed:\n{ve}\nRaw: {content}")
@@ -109,7 +113,7 @@ class UpdatePayload(BaseModel):
     )
 
 
-def updatePlaceholders(message, ordered_placeholders, openai_api_key:str, conversation_history=None,):
+def updatePlaceholders(message, ordered_placeholders, conversation_history=None):
     """
     Use OpenAI to intelligently update placeholders with values extracted from the message.
     If the model is not sure about any value, it should ask the user for clarification.
@@ -120,11 +124,6 @@ def updatePlaceholders(message, ordered_placeholders, openai_api_key:str, conver
         ordered_placeholders: List of placeholder dictionaries
         conversation_history: List of previous conversations in format [{"role": "user|assistant", "content": "..."}, ...]
     """
-    if not openai_api_key:
-        raise RuntimeError("OPENAI_API_KEY is not set in environment")
-
-    client = OpenAI(api_key=openai_api_key)
-
     # Compose prompt with all placeholder info + the user message
     prompt = """
     You are an expert in updating the document placeholders based on the user's message.
@@ -160,8 +159,8 @@ def updatePlaceholders(message, ordered_placeholders, openai_api_key:str, conver
     # Add the current user message
     messages.append({"role": "user", "content": user_content})
     
-    resp = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+    resp = OPENAI_CLIENT.chat.completions.create(
+        model=OPENAI_MODEL,
         temperature=0,
         messages=messages,
         response_format={

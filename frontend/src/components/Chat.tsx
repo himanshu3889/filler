@@ -24,14 +24,13 @@ interface ChatMessage {
 
 interface ChatProps {
   documentId: string | null;
-  openaiApiKey: string;
   onChatResponse?: (response: AgentMessageResponse) => void;
 }
 
 // Store chats in memory (per documentId)
 const chatStore = new Map<string, ChatMessage[]>();
 
-export default function Chat({ documentId, openaiApiKey, onChatResponse }: ChatProps) {
+export default function Chat({ documentId, onChatResponse }: ChatProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [chats, setChats] = useState<ChatMessage[]>([]);
@@ -54,7 +53,7 @@ export default function Chat({ documentId, openaiApiKey, onChatResponse }: ChatP
   }, [chats]);
 
   const handleSend = async () => {
-    if (!message.trim() || !documentId || !openaiApiKey || isLoading) return;
+    if (!message.trim() || !documentId || isLoading) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -71,7 +70,7 @@ export default function Chat({ documentId, openaiApiKey, onChatResponse }: ChatP
     setIsLoading(true);
 
     try {
-      const response = await sendAgentMessage(documentId, userMessage.content, openaiApiKey);
+      const response = await sendAgentMessage(documentId, userMessage.content);
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -126,7 +125,7 @@ export default function Chat({ documentId, openaiApiKey, onChatResponse }: ChatP
     }
   };
 
-  if (!documentId || !openaiApiKey) { 
+  if (!documentId) { 
     return (
       <Box
         sx={{
@@ -138,7 +137,7 @@ export default function Chat({ documentId, openaiApiKey, onChatResponse }: ChatP
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          {!openaiApiKey ? "Please configure your OpenAI API key to use chat features." : "Upload a document to start chatting"}
+          {"Upload a document to start chatting"}
         </Typography>
       </Box>
     );
@@ -292,7 +291,7 @@ export default function Chat({ documentId, openaiApiKey, onChatResponse }: ChatP
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
-          disabled={!documentId || !openaiApiKey || isLoading}
+          disabled={!documentId || isLoading}
           variant="outlined"
           size="small"
           sx={{
@@ -307,7 +306,7 @@ export default function Chat({ documentId, openaiApiKey, onChatResponse }: ChatP
                 <IconButton
                   color="primary"
                   onClick={handleSend}
-                  disabled={!documentId || !openaiApiKey || !message.trim() || isLoading}
+                  disabled={!documentId || !message.trim() || isLoading}
                   size="small"
                   sx={{
                     bgcolor: "primary.main",

@@ -1,3 +1,5 @@
+"use server";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://filler-h68p.onrender.com";
 
 
@@ -6,10 +8,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://filler-h68p.onr
  * Upload a DOCX file to the backend for processing
  * Returns document info with extracted placeholders
  */
-export async function uploadFile(file: File, openaiApiKey: string): Promise<UploadFileResponse> {
+export async function uploadFile(file: File): Promise<UploadFileResponse> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('openai_api_key', openaiApiKey);
   const response = await fetch(`${API_BASE_URL}/api/fileUpload`, {
     method: 'POST',
     body: formData,
@@ -30,7 +31,6 @@ export async function uploadFile(file: File, openaiApiKey: string): Promise<Uplo
 export async function sendAgentMessage(
   documentId: string,
   message: string,
-  openaiApiKey: string
 ): Promise<AgentMessageResponse> {
   const response = await fetch(`${API_BASE_URL}/api/agent/message`, {
     method: 'POST',
@@ -40,7 +40,6 @@ export async function sendAgentMessage(
     body: JSON.stringify({
       id: documentId,
       message: message,
-      openai_api_key: openaiApiKey,
     }),
   });
 
